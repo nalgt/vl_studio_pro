@@ -1,0 +1,1774 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VL Studio Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --red: #e63946;
+            --purple: #8b5cf6;
+            --green: #22c55e;
+            --yellow: #f59e0b;
+            --bg: #0a0a0a;
+            --panel: #141414;
+            --panel2: #1c1c1c;
+            --border: #252525;
+            --text: #d4d4d4;
+            --dim: #666;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ─── HEADER ─────────────────────── */
+        #header {
+            background: #0f0f0f;
+            border-bottom: 1px solid var(--border);
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            gap: 8px;
+        }
+        .logo {
+            font-weight: 700;
+            font-size: 15px;
+            letter-spacing: 3px;
+            color: var(--red);
+        }
+        .logo span { color: var(--text); }
+        #status-bar {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            color: var(--dim);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .status-chip {
+            padding: 2px 7px;
+            border-radius: 3px;
+            background: #1a1a1a;
+            border: 1px solid var(--border);
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .status-chip.ok { color: var(--green); border-color: #1a3a2a; }
+
+        /* ─── PREVIEW ─────────────────────── */
+        #preview-zone {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            position: relative;
+            overflow: hidden;
+            min-height: 0;
+        }
+        canvas#mainCanvas { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+        #no-video {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            pointer-events: none;
+        }
+        .nv-icon {
+            width: 56px;
+            height: 56px;
+            opacity: 0.12;
+            fill: none;
+            stroke: #fff;
+            stroke-width: 1;
+        }
+        .nv-text {
+            font-size: 11px;
+            letter-spacing: 4px;
+            color: #333;
+            font-weight: 700;
+        }
+
+        /* ─── TOAST ───────────────────────── */
+        #toast {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-4px);
+            background: rgba(10,10,10,0.92);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(8px);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.25s, transform 0.25s;
+            white-space: nowrap;
+            z-index: 100;
+        }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* ─── EXPORT PROGRESS ─────────────── */
+        #export-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 50;
+        }
+        #export-overlay.show { display: flex; }
+        .export-spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid #333;
+            border-top-color: var(--green);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .export-label { font-size: 13px; color: var(--green); letter-spacing: 2px; }
+
+        /* ─── TIMELINE ────────────────────── */
+        #timeline-wrap {
+            background: var(--panel);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 6px 10px 5px;
+            flex-shrink: 0;
+        }
+        canvas#timeline {
+            width: 100%;
+            height: 40px;
+            cursor: pointer;
+            display: block;
+            border-radius: 4px;
+            touch-action: none;
+        }
+        #time-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 3px;
+        }
+        .tc { font-family: 'Share Tech Mono', monospace; font-size: 11px; }
+        #cur-time { color: var(--red); font-size: 13px; }
+        #dur-time { color: var(--dim); }
+        #markers-info { color: #3d3d3d; font-size: 10px; font-family: 'Share Tech Mono', monospace; }
+
+        /* ─── CONTROLS ────────────────────── */
+        #controls {
+            background: var(--panel);
+            padding: 8px 10px;
+            flex-shrink: 0;
+        }
+        .row { display: flex; gap: 6px; margin-bottom: 7px; align-items: center; }
+        .row:last-child { margin-bottom: 0; }
+
+        /* Buttons */
+        .btn {
+            background: var(--panel2);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 8px 4px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 10px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            flex: 1;
+            text-align: center;
+            letter-spacing: 0.5px;
+            transition: background 0.12s, border-color 0.12s, color 0.12s;
+            white-space: nowrap;
+            min-width: 0;
+        }
+        .btn:active { filter: brightness(1.4); }
+        .btn.red   { border-color: #4a1c1c; color: var(--red); }
+        .btn.red.active, .btn.red:active { background: var(--red); color: #fff; border-color: var(--red); }
+        .btn.green { border-color: #1a3a22; color: var(--green); }
+        .btn.green:active { background: var(--green); color: #000; border-color: var(--green); }
+        .btn.purple { border-color: #2d1f4a; color: var(--purple); }
+        .btn.purple:active { background: var(--purple); color: #fff; border-color: var(--purple); }
+        .btn.lit  { background: var(--red); border-color: var(--red); color: #fff; }
+        .btn.lit-g { background: var(--green); border-color: var(--green); color: #000; }
+        label.btn { cursor: pointer; }
+
+        /* Play button special */
+        #playBtn {
+            border-color: rgba(255,255,255,0.2);
+            color: #fff;
+            min-width: 88px;
+        }
+
+        /* AI Input */
+        .ai-input {
+            flex: 2;
+            padding: 8px 10px;
+            border-radius: 5px;
+            border: 1px solid var(--border);
+            background: #181818;
+            color: var(--text);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 13px;
+            min-width: 0;
+        }
+        .ai-input:focus { outline: none; border-color: var(--purple); }
+
+        /* Volume */
+        .vol-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .vol-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: var(--dim);
+            min-width: 52px;
+        }
+        input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 3px;
+            background: #2a2a2a;
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            background: var(--red);
+            cursor: pointer;
+        }
+        #musVol::-webkit-slider-thumb { background: var(--purple); }
+        .vol-val {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            color: var(--dim);
+            min-width: 32px;
+            text-align: right;
+        }
+
+        /* Speed buttons */
+        .speed-group { display: flex; gap: 4px; flex: 1; }
+        .spd {
+            background: #181818;
+            border: 1px solid var(--border);
+            color: var(--dim);
+            padding: 6px 2px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-family: 'Share Tech Mono', monospace;
+            cursor: pointer;
+            flex: 1;
+            text-align: center;
+            transition: all 0.12s;
+        }
+        .spd.active { background: var(--red); border-color: var(--red); color: #fff; }
+
+        /* Divider */
+        hr { border: none; border-top: 1px solid var(--border); margin: 6px 0; }
+
+        /* Section label */
+        .sec { font-size: 9px; font-weight: 700; letter-spacing: 2px; color: #3a3a3a; margin-bottom: 5px; }
+
+        /* ─── TABS ────────────────────────── */
+        #tab-bar {
+            display: flex;
+            background: #0d0d0d;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .tab {
+            flex: 1;
+            padding: 8px 4px;
+            text-align: center;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: var(--dim);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: color 0.15s, border-color 0.15s;
+            user-select: none;
+        }
+        .tab.active { color: var(--text); border-bottom-color: var(--red); }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ─── EFFECTS GRID ────────────────── */
+        .fx-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            margin-bottom: 7px;
+        }
+        .fx-btn {
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            color: var(--dim);
+            padding: 7px 2px;
+            border-radius: 5px;
+            font-size: 9px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: center;
+            letter-spacing: 0.3px;
+            transition: all 0.12s;
+            line-height: 1.3;
+        }
+        .fx-btn .fx-icon { font-size: 15px; display: block; margin-bottom: 2px; }
+        .fx-btn.active { background: #1e1040; border-color: var(--purple); color: #c4b5fd; }
+        .fx-btn:active { filter: brightness(1.4); }
+
+        .fx-slider-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 5px;
+        }
+        .fx-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: var(--dim);
+            min-width: 58px;
+        }
+        .fx-val {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            color: var(--dim);
+            min-width: 34px;
+            text-align: right;
+        }
+
+        /* ─── SFX GRID ────────────────────── */
+        .sfx-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            margin-bottom: 7px;
+        }
+        .sfx-btn {
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 3px;
+            border-radius: 5px;
+            font-size: 9px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: center;
+            line-height: 1.3;
+            transition: background 0.08s;
+            user-select: none;
+        }
+        .sfx-btn .sfx-icon { font-size: 16px; display: block; margin-bottom: 1px; }
+        .sfx-btn:active { background: #2d1a00; border-color: var(--yellow); color: var(--yellow); }
+        .sfx-btn.playing { background: #2a1800; border-color: var(--yellow); }
+
+        .sfx-vol-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+        #sfxVol::-webkit-slider-thumb { background: var(--yellow); }
+
+        /* Controls scrollable on small screens */
+        #controls { overflow-y: auto; }
+        #controls::-webkit-scrollbar { width: 3px; }
+        #controls::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+            font-size: 9px;
+            color: #333;
+            text-align: center;
+            padding: 4px 0 0;
+            letter-spacing: 0.5px;
+            line-height: 1.8;
+        }
+        kbd {
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 1px 4px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 9px;
+        }
+
+        /* Point display */
+        .point-display {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            color: var(--yellow);
+            min-width: 80px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<div id="header">
+    <div class="logo">VL<span> STUDIO</span> PRO</div>
+    <div id="status-bar">
+        <span class="status-chip" id="vid-status">NO VID</span>
+        <span class="status-chip" id="aud-status">NO MP3</span>
+        <span class="status-chip" id="edit-status">0 CUTS · 0 AI</span>
+    </div>
+</div>
+
+<!-- ══ PREVIEW ══ -->
+<div id="preview-zone">
+    <div id="no-video">
+        <svg class="nv-icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="m10 8 6 4-6 4V8z"/></svg>
+        <div class="nv-text">UČITAJ VIDEO</div>
+    </div>
+    <canvas id="mainCanvas"></canvas>
+    <video id="vSource" style="display:none;" playsinline crossorigin="anonymous"></video>
+    <audio id="aSource" style="display:none;" crossorigin="anonymous"></audio>
+    <div id="toast"></div>
+    <div id="export-overlay">
+        <div class="export-spinner"></div>
+        <div class="export-label">EKSPORTUJE SE...</div>
+    </div>
+</div>
+
+<!-- ══ TIMELINE ══ -->
+<div id="timeline-wrap">
+    <canvas id="timeline"></canvas>
+    <div id="time-row">
+        <span class="tc" id="cur-time">0.000s</span>
+        <span id="markers-info">0 cuts · 0 ai</span>
+        <span class="tc" id="dur-time">0.000s</span>
+    </div>
+</div>
+
+<!-- ══ TAB BAR ══ -->
+<div id="tab-bar">
+    <div class="tab active" onclick="switchTab('main')">⚙️ MAIN</div>
+    <div class="tab" onclick="switchTab('vfx')">🎨 VIDEO FX</div>
+    <div class="tab" onclick="switchTab('sfx')">🔊 ZVUČNI FX</div>
+</div>
+
+<!-- ══ CONTROLS ══ -->
+<div id="controls">
+
+<!-- ══════ TAB: MAIN ══════ -->
+<div class="tab-panel active" id="panel-main">
+
+    <!-- Row 1: Files + Play + Mute -->
+    <div class="row">
+        <label class="btn">📁 VIDEO<input type="file" id="vIn" accept="video/*" style="display:none;"></label>
+        <label class="btn red">🎵 MP3<input type="file" id="aIn" accept="audio/*" style="display:none;"></label>
+        <button class="btn" id="playBtn" onclick="togglePlay()">▶ PUSTI</button>
+        <button class="btn" id="muteBtn" onclick="toggleMuteVid()" title="Mute video zvuk">🔊</button>
+    </div>
+
+    <!-- Row 2: Speed -->
+    <div class="row" style="align-items:center;">
+        <span class="vol-label">BRZINA</span>
+        <div class="speed-group">
+            <button class="spd" onclick="setSpeed(0.25,this)">¼×</button>
+            <button class="spd" onclick="setSpeed(0.5,this)">½×</button>
+            <button class="spd active" id="spd1" onclick="setSpeed(1,this)">1×</button>
+            <button class="spd" onclick="setSpeed(1.5,this)">1.5×</button>
+            <button class="spd" onclick="setSpeed(2,this)">2×</button>
+        </div>
+    </div>
+
+    <!-- Row 3: Volume Video -->
+    <div class="vol-row">
+        <span class="vol-label">🎬 VIDEO</span>
+        <input type="range" id="vidVol" min="0" max="1" step="0.01" value="1"
+               oninput="setVol('vid', this.value)">
+        <span class="vol-val" id="vidVolVal">100%</span>
+    </div>
+
+    <!-- Row 4: Volume Music -->
+    <div class="vol-row">
+        <span class="vol-label">🎵 MUZIKA</span>
+        <input type="range" id="musVol" min="0" max="1" step="0.01" value="0.8"
+               oninput="setVol('mus', this.value)">
+        <span class="vol-val" id="musVolVal">80%</span>
+    </div>
+
+    <hr>
+
+    <!-- Row 5: Cut controls -->
+    <div class="row">
+        <button class="btn" id="btnStart" onclick="setPoint('s')">📍 OD</button>
+        <button class="btn" id="btnEnd"   onclick="setPoint('e')">📍 DO</button>
+        <button class="btn red" onclick="applyCut()">✂️ SEČI</button>
+        <button class="btn" onclick="undoCut()">↩ CUT</button>
+    </div>
+
+    <!-- Row 6: AI -->
+    <div class="row">
+        <input class="ai-input" type="text" id="aiText" placeholder="AI tekst (Srb / Eng)...">
+        <button class="btn purple" onclick="addAI()">🎙 AI</button>
+        <button class="btn lit-g" id="subBtn" onclick="toggleSubs()" title="Uključi/isključi titlove">💬 TITL</button>
+        <button class="btn" onclick="undoAI()">↩ AI</button>
+    </div>
+
+    <!-- Row 6b: Subtitle style -->
+    <div class="row" id="subStyleRow" style="display:none;">
+        <span class="vol-label">TITL VEL.</span>
+        <input type="range" id="subSize" min="12" max="64" step="1" value="28"
+               oninput="document.getElementById('subSizeVal').textContent=this.value+'px'">
+        <span class="vol-val" id="subSizeVal">28px</span>
+        <select id="subPos" style="background:#1e1e1e;color:var(--text);border:1px solid var(--border);border-radius:4px;padding:5px;font-family:Rajdhani,sans-serif;font-size:11px;">
+            <option value="bottom">Dole</option>
+            <option value="top">Gore</option>
+            <option value="center">Sredina</option>
+        </select>
+    </div>
+
+    <hr>
+
+    <!-- Row 7: Normalize -->
+    <div class="vol-row">
+        <span class="vol-label">🎚 NORM</span>
+        <input type="range" id="compThresh" min="-60" max="0" step="1" value="-24"
+               oninput="updateCompressor()">
+        <span class="vol-val" id="compVal">-24dB</span>
+        <button class="btn" id="normBtn" onclick="toggleNormalize()" style="min-width:52px;flex:none;">OFF</button>
+    </div>
+
+    <hr>
+
+    <!-- Row 8: Export + Loop -->
+    <div class="row">
+        <button class="btn green" onclick="startExport()">💾 SNIMI VIDEO</button>
+        <button class="btn" id="loopBtn" onclick="toggleLoop()">🔁 LOOP</button>
+    </div>
+
+    <div class="kbd-hint">
+        <kbd>SPACE</kbd> play &nbsp;
+        <kbd>← →</kbd> ±2s &nbsp;
+        <kbd>M</kbd> mute &nbsp;
+        <kbd>S</kbd> mark start &nbsp;
+        <kbd>E</kbd> mark end &nbsp;
+        <kbd>C</kbd> cut
+    </div>
+</div>
+
+<!-- ══════ TAB: VIDEO FX ══════ -->
+<div class="tab-panel" id="panel-vfx">
+
+    <!-- Preset filters -->
+    <div class="sec" style="margin-top:2px;">PRESET EFEKTI</div>
+    <div class="fx-grid">
+        <button class="fx-btn" id="fx-none"      onclick="applyPreset('none')">      <span class="fx-icon">🔲</span>ORIGINAL</button>
+        <button class="fx-btn" id="fx-gray"      onclick="applyPreset('gray')">      <span class="fx-icon">⬛</span>GRAYSCALE</button>
+        <button class="fx-btn" id="fx-sepia"     onclick="applyPreset('sepia')">     <span class="fx-icon">🟫</span>SEPIA</button>
+        <button class="fx-btn" id="fx-invert"    onclick="applyPreset('invert')">    <span class="fx-icon">🔀</span>INVERT</button>
+        <button class="fx-btn" id="fx-night"     onclick="applyPreset('night')">     <span class="fx-icon">🌙</span>NIGHT</button>
+        <button class="fx-btn" id="fx-warm"      onclick="applyPreset('warm')">      <span class="fx-icon">🌅</span>WARM</button>
+        <button class="fx-btn" id="fx-cool"      onclick="applyPreset('cool')">      <span class="fx-icon">❄️</span>COOL</button>
+        <button class="fx-btn" id="fx-vhs"       onclick="applyPreset('vhs')">       <span class="fx-icon">📼</span>VHS</button>
+        <button class="fx-btn" id="fx-vivid"     onclick="applyPreset('vivid')">     <span class="fx-icon">🌈</span>VIVID</button>
+        <button class="fx-btn" id="fx-noir"      onclick="applyPreset('noir')">      <span class="fx-icon">🎭</span>NOIR</button>
+        <button class="fx-btn" id="fx-vignette"  onclick="toggleVignette()">         <span class="fx-icon">🔵</span>VIGNETTE</button>
+        <button class="fx-btn" id="fx-glitch"    onclick="toggleGlitch()">           <span class="fx-icon">⚡</span>GLITCH</button>
+    </div>
+
+    <hr>
+
+    <!-- Manual sliders -->
+    <div class="sec">RUČNA PODEŠAVANJA</div>
+
+    <div class="fx-slider-row">
+        <span class="fx-label">☀️ SVETLOST</span>
+        <input type="range" id="fxBright" min="0" max="300" step="1" value="100" oninput="updateFilter()">
+        <span class="fx-val" id="fxBrightV">100%</span>
+    </div>
+    <div class="fx-slider-row">
+        <span class="fx-label">🔲 KONTRAST</span>
+        <input type="range" id="fxContrast" min="0" max="300" step="1" value="100" oninput="updateFilter()">
+        <span class="fx-val" id="fxContrastV">100%</span>
+    </div>
+    <div class="fx-slider-row">
+        <span class="fx-label">🌈 ZASIĆENOST</span>
+        <input type="range" id="fxSat" min="0" max="300" step="1" value="100" oninput="updateFilter()">
+        <span class="fx-val" id="fxSatV">100%</span>
+    </div>
+    <div class="fx-slider-row">
+        <span class="fx-label">🎨 HUE</span>
+        <input type="range" id="fxHue" min="0" max="360" step="1" value="0" oninput="updateFilter()">
+        <span class="fx-val" id="fxHueV">0°</span>
+    </div>
+    <div class="fx-slider-row">
+        <span class="fx-label">🌫️ BLUR</span>
+        <input type="range" id="fxBlur" min="0" max="20" step="0.5" value="0" oninput="updateFilter()">
+        <span class="fx-val" id="fxBlurV">0px</span>
+    </div>
+    <div class="fx-slider-row">
+        <span class="fx-label">⬛ SIVA</span>
+        <input type="range" id="fxGray" min="0" max="100" step="1" value="0" oninput="updateFilter()">
+        <span class="fx-val" id="fxGrayV">0%</span>
+    </div>
+    <div class="fx-slider-row">
+        <span class="fx-label">🟫 SEPIA</span>
+        <input type="range" id="fxSepia" min="0" max="100" step="1" value="0" oninput="updateFilter()">
+        <span class="fx-val" id="fxSepiaV">0%</span>
+    </div>
+
+    <div class="row" style="margin-top:6px;">
+        <button class="btn" onclick="resetFilters()">↺ RESET FX</button>
+    </div>
+</div>
+
+<!-- ══════ TAB: SFX ══════ -->
+<div class="tab-panel" id="panel-sfx">
+
+    <div class="sfx-vol-row" style="margin-top:2px;">
+        <span class="vol-label" style="min-width:58px;font-size:9px;font-weight:700;letter-spacing:1px;color:var(--dim);">🔔 SFX VOL</span>
+        <input type="range" id="sfxVol" min="0" max="1" step="0.01" value="0.7" style="-webkit-appearance:none;flex:1;height:3px;background:#2a2a2a;border-radius:2px;outline:none;">
+        <span class="vol-val" id="sfxVolVal">70%</span>
+    </div>
+    <div class="sfx-vol-row">
+        <span class="vol-label" style="min-width:58px;font-size:9px;font-weight:700;letter-spacing:1px;color:var(--dim);">🕐 NA VREME</span>
+        <input type="range" id="sfxDelay" min="0" max="30" step="0.1" value="0" style="-webkit-appearance:none;flex:1;height:3px;background:#2a2a2a;border-radius:2px;outline:none;" oninput="document.getElementById('sfxDelayV').textContent=this.value+'s'">
+        <span class="vol-val" id="sfxDelayV">0s</span>
+    </div>
+    <hr>
+    <div class="sec">ATMOSFERA</div>
+    <div class="sfx-grid">
+        <button class="sfx-btn" onclick="playSFX('boom')">     <span class="sfx-icon">💥</span>BOOM</button>
+        <button class="sfx-btn" onclick="playSFX('whoosh')">   <span class="sfx-icon">💨</span>WHOOSH</button>
+        <button class="sfx-btn" onclick="playSFX('explosion')"><span class="sfx-icon">🔥</span>EXPLODE</button>
+        <button class="sfx-btn" onclick="playSFX('thunder')">  <span class="sfx-icon">⛈️</span>GRMLJAVINA</button>
+        <button class="sfx-btn" onclick="playSFX('wind')">     <span class="sfx-icon">🌬️</span>VETAR</button>
+        <button class="sfx-btn" onclick="playSFX('rain')">     <span class="sfx-icon">🌧️</span>KIŠA</button>
+        <button class="sfx-btn" onclick="playSFX('fire')">     <span class="sfx-icon">🔥</span>VATRA</button>
+        <button class="sfx-btn" onclick="playSFX('heartbeat')"><span class="sfx-icon">❤️</span>SRCE</button>
+    </div>
+    <div class="sec">AKCIJA</div>
+    <div class="sfx-grid">
+        <button class="sfx-btn" onclick="playSFX('gun')">      <span class="sfx-icon">🔫</span>PUCANJ</button>
+        <button class="sfx-btn" onclick="playSFX('sword')">    <span class="sfx-icon">⚔️</span>MAČ</button>
+        <button class="sfx-btn" onclick="playSFX('punch')">    <span class="sfx-icon">👊</span>UDARAC</button>
+        <button class="sfx-btn" onclick="playSFX('laser')">    <span class="sfx-icon">🔴</span>LASER</button>
+        <button class="sfx-btn" onclick="playSFX('beep')">     <span class="sfx-icon">📡</span>BEEP</button>
+        <button class="sfx-btn" onclick="playSFX('alarm')">    <span class="sfx-icon">🚨</span>ALARM</button>
+        <button class="sfx-btn" onclick="playSFX('powerup')">  <span class="sfx-icon">⚡</span>POWER UP</button>
+        <button class="sfx-btn" onclick="playSFX('powerdown')"><span class="sfx-icon">💤</span>POWER DOWN</button>
+    </div>
+    <div class="sec">OBAVEŠTENJA</div>
+    <div class="sfx-grid">
+        <button class="sfx-btn" onclick="playSFX('ding')">     <span class="sfx-icon">🔔</span>DING</button>
+        <button class="sfx-btn" onclick="playSFX('success')">  <span class="sfx-icon">✅</span>USPEH</button>
+        <button class="sfx-btn" onclick="playSFX('error')">    <span class="sfx-icon">❌</span>GREŠKA</button>
+        <button class="sfx-btn" onclick="playSFX('click')">    <span class="sfx-icon">🖱️</span>KLIK</button>
+        <button class="sfx-btn" onclick="playSFX('coin')">     <span class="sfx-icon">🪙</span>NOVČIĆ</button>
+        <button class="sfx-btn" onclick="playSFX('notification')"><span class="sfx-icon">📱</span>NOTIF</button>
+        <button class="sfx-btn" onclick="playSFX('womp')">     <span class="sfx-icon">😞</span>WOMP</button>
+        <button class="sfx-btn" onclick="playSFX('applause')"> <span class="sfx-icon">👏</span>APLAUZ</button>
+    </div>
+    <div class="sec">DODAJ NA TIMELINE</div>
+    <div class="row">
+        <select id="sfxSelect" style="flex:2;background:#1e1e1e;color:var(--text);border:1px solid var(--border);border-radius:4px;padding:7px;font-family:Rajdhani,sans-serif;font-size:12px;">
+            <option value="boom">💥 Boom</option><option value="whoosh">💨 Whoosh</option>
+            <option value="explosion">🔥 Explode</option><option value="thunder">⛈️ Grmljavina</option>
+            <option value="wind">🌬️ Vetar</option><option value="rain">🌧️ Kiša</option>
+            <option value="fire">🔥 Vatra</option><option value="heartbeat">❤️ Srce</option>
+            <option value="gun">🔫 Pucanj</option><option value="sword">⚔️ Mač</option>
+            <option value="punch">👊 Udarac</option><option value="laser">🔴 Laser</option>
+            <option value="beep">📡 Beep</option><option value="alarm">🚨 Alarm</option>
+            <option value="powerup">⚡ Power Up</option><option value="powerdown">💤 Power Down</option>
+            <option value="ding">🔔 Ding</option><option value="success">✅ Uspeh</option>
+            <option value="error">❌ Greška</option><option value="click">🖱️ Klik</option>
+            <option value="coin">🪙 Novčić</option><option value="notification">📱 Notif</option>
+            <option value="womp">😞 Womp</option><option value="applause">👏 Aplauz</option>
+        </select>
+        <button class="btn yellow" onclick="addSFXtoTimeline()" style="border-color:#4a3200;color:var(--yellow);">📌 DODAJ</button>
+    </div>
+    <div id="sfx-timeline-list" style="margin-top:5px;font-size:9px;color:var(--dim);font-family:'Share Tech Mono',monospace;max-height:60px;overflow-y:auto;"></div>
+</div>
+
+</div><!-- end #controls -->
+
+<script>
+"use strict";
+
+// ── Elements ──────────────────────────────────────────────────────
+const video    = document.getElementById('vSource');
+const audioEl  = document.getElementById('aSource');
+const cvs      = document.getElementById('mainCanvas');
+const ctx      = cvs.getContext('2d');
+const tCvs     = document.getElementById('timeline');
+const tCtx     = tCvs.getContext('2d');
+
+// ── State ─────────────────────────────────────────────────────────
+let cuts    = [];
+let aiMsgs  = [];
+let startP  = -1;
+let endP    = -1;
+let looping = false;
+let vidMuted = false;
+let exporting = false;
+
+// ── Web Audio API ─────────────────────────────────────────────────
+let audioCtx      = null;
+let masterDest    = null;
+let vidGain       = null;
+let musGain       = null;
+let compressor    = null;
+let compBypass    = null; // gain=1 when bypass, gain=0 when compress
+let compActive    = null; // gain=0 when bypass, gain=1 when compress
+let normalizeOn   = false;
+let vidSrcNode    = false;
+let musSrcNode    = false;
+
+// ── Subtitle state ────────────────────────────────────────────────
+let subsEnabled   = true;
+let subText       = null;
+let subProgress   = 0;
+let subSpeakStart = 0;
+let subSpeakEnd   = 0; // estimated end time (performance.now)
+
+function ensureAudioCtx() {
+    if (audioCtx) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        return;
+    }
+    audioCtx   = new (window.AudioContext || window.webkitAudioContext)();
+    masterDest = audioCtx.createMediaStreamDestination();
+}
+
+function connectVideoAudio() {
+    if (vidSrcNode) return;
+    try {
+        ensureAudioCtx();
+        const src = audioCtx.createMediaElementSource(video);
+        vidGain   = audioCtx.createGain();
+        vidGain.gain.value = vidMuted ? 0 : parseFloat(document.getElementById('vidVol').value);
+
+        // Compressor (always in chain, bypassed via gain nodes)
+        compressor = audioCtx.createDynamicsCompressor();
+        compressor.threshold.value = -24;
+        compressor.knee.value      = 30;
+        compressor.ratio.value     = 12;
+        compressor.attack.value    = 0.003;
+        compressor.release.value   = 0.25;
+
+        // Bypass path (direct) gain
+        compBypass = audioCtx.createGain();
+        compBypass.gain.value = 1; // bypass ON by default
+
+        // Compressed path gain
+        compActive = audioCtx.createGain();
+        compActive.gain.value = 0; // compressed OFF by default
+
+        // Output mixer
+        const outGain = audioCtx.createGain();
+        outGain.gain.value = 1;
+
+        // Wire: src → vidGain → compBypass → outGain → dest + masterDest
+        src.connect(vidGain);
+        vidGain.connect(compBypass);
+        vidGain.connect(compressor);
+        compressor.connect(compActive);
+        compBypass.connect(outGain);
+        compActive.connect(outGain);
+        outGain.connect(audioCtx.destination);
+        outGain.connect(masterDest);
+
+        vidSrcNode = true;
+    } catch(e) { console.warn('video audio:', e); }
+}
+
+function toggleNormalize() {
+    normalizeOn = !normalizeOn;
+    const btn = document.getElementById('normBtn');
+    if (compBypass && compActive) {
+        compBypass.gain.setTargetAtTime(normalizeOn ? 0 : 1, audioCtx.currentTime, 0.05);
+        compActive.gain.setTargetAtTime(normalizeOn ? 1 : 0, audioCtx.currentTime, 0.05);
+    }
+    btn.textContent = normalizeOn ? 'ON' : 'OFF';
+    btn.classList.toggle('lit-g', normalizeOn);
+    toast(normalizeOn ? '🎚 Normalizacija ON — zvuk izjednačen' : '🎚 Normalizacija OFF');
+}
+
+function updateCompressor() {
+    const val = parseFloat(document.getElementById('compThresh').value);
+    document.getElementById('compVal').textContent = val + 'dB';
+    if (compressor) compressor.threshold.setTargetAtTime(val, audioCtx.currentTime, 0.01);
+}
+
+// ── Subtitle functions ────────────────────────────────────────────
+function toggleSubs() {
+    subsEnabled = !subsEnabled;
+    const btn = document.getElementById('subBtn');
+    const row = document.getElementById('subStyleRow');
+    btn.classList.toggle('lit-g', subsEnabled);
+    row.style.display = subsEnabled ? 'flex' : 'none';
+    if (!subsEnabled) subText = null;
+    toast(subsEnabled ? '💬 Titlovi ON' : '💬 Titlovi OFF');
+}
+
+function drawSubtitle() {
+    if (!subText || !subsEnabled || cvs.width === 0) return;
+
+    const fs    = parseInt(document.getElementById('subSize').value) || 28;
+    const pos   = document.getElementById('subPos').value;
+    const pad   = 16;
+    const maxW  = cvs.width * 0.88;
+
+    ctx.font = `700 ${fs}px Rajdhani, Arial, sans-serif`;
+    ctx.textBaseline = 'alphabetic';
+
+    // Word wrap
+    const words = subText.split(' ');
+    const lines = [];
+    let cur = '';
+    for (const w of words) {
+        const test = cur ? cur + ' ' + w : w;
+        if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; }
+        else cur = test;
+    }
+    if (cur) lines.push(cur);
+
+    const lineH   = fs * 1.35;
+    const boxH    = lines.length * lineH + pad + 5; // +5 for progress bar
+    const allW    = Math.min(maxW, Math.max(...lines.map(l => ctx.measureText(l).width))) + pad * 2;
+    const boxX    = cvs.width / 2 - allW / 2;
+
+    let boxY;
+    if      (pos === 'top')    boxY = cvs.height * 0.04;
+    else if (pos === 'center') boxY = cvs.height / 2 - boxH / 2;
+    else                       boxY = cvs.height - boxH - cvs.height * 0.04;
+
+    // Background box
+    ctx.fillStyle = 'rgba(0,0,0,0.78)';
+    roundRect(ctx, boxX, boxY, allW, boxH, 7);
+    ctx.fill();
+
+    // Left purple accent bar
+    ctx.fillStyle = '#8b5cf6';
+    roundRect(ctx, boxX, boxY, 4, boxH - 5, 2);
+    ctx.fill();
+
+    // Progress bar (bottom of box)
+    subProgress = subSpeakEnd > subSpeakStart
+        ? Math.min(1, (performance.now() - subSpeakStart) / (subSpeakEnd - subSpeakStart))
+        : 0;
+    if (subProgress > 0) {
+        ctx.fillStyle = 'rgba(139,92,246,0.5)';
+        roundRect(ctx, boxX, boxY + boxH - 5, allW * subProgress, 5, 0);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(139,92,246,0.9)';
+        roundRect(ctx, boxX, boxY + boxH - 5, allW * subProgress, 5, 0);
+        ctx.fill();
+    }
+
+    // Text lines
+    lines.forEach((line, i) => {
+        const tx = cvs.width / 2;
+        const ty = boxY + pad / 2 + fs + i * lineH;
+
+        // Outline / shadow
+        ctx.textAlign   = 'center';
+        ctx.strokeStyle = 'rgba(0,0,0,0.95)';
+        ctx.lineWidth   = fs * 0.12;
+        ctx.lineJoin    = 'round';
+        ctx.strokeText(line, tx, ty);
+
+        // Main text
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(line, tx, ty);
+    });
+
+    ctx.textAlign    = 'left';
+    ctx.textBaseline = 'alphabetic';
+}
+
+function connectMusicAudio() {
+    if (musSrcNode) return;
+    try {
+        ensureAudioCtx();
+        const src = audioCtx.createMediaElementSource(audioEl);
+        musGain   = audioCtx.createGain();
+        musGain.gain.value = parseFloat(document.getElementById('musVol').value);
+        src.connect(musGain);
+        musGain.connect(audioCtx.destination);
+        musGain.connect(masterDest);
+        musSrcNode = true;
+    } catch(e) { console.warn('music audio:', e); }
+}
+
+// ── File loading ──────────────────────────────────────────────────
+document.getElementById('vIn').onchange = (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    video.src = URL.createObjectURL(f);
+    video.onloadedmetadata = () => {
+        cvs.width  = video.videoWidth  || 1280;
+        cvs.height = video.videoHeight || 720;
+        document.getElementById('no-video').style.display = 'none';
+        document.getElementById('dur-time').textContent = fmtT(video.duration);
+        connectVideoAudio();
+        updateStatus();
+        drawTimeline();
+    };
+    toast('📹 ' + truncate(f.name, 28));
+};
+
+document.getElementById('aIn').onchange = (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    audioEl.src = URL.createObjectURL(f);
+    audioEl.loop = true; // 🔁 muzika se ponavlja
+    audioEl.onloadedmetadata = () => {
+        audioEl.currentTime = video.currentTime;
+        audioEl.volume = parseFloat(document.getElementById('musVol').value);
+        connectMusicAudio();
+        updateStatus();
+    };
+    toast('🎵 ' + truncate(f.name, 28) + ' (loop)');
+};
+
+// ── Sync ──────────────────────────────────────────────────────────
+video.addEventListener('play',  () => {
+    ensureAudioCtx();
+    if (audioEl.src) { audioEl.currentTime = video.currentTime; audioEl.play().catch(()=>{}); }
+});
+video.addEventListener('pause', () => { if (audioEl.src) audioEl.pause(); });
+video.addEventListener('seeking', () => {
+    if (audioEl.src) audioEl.currentTime = video.currentTime;
+});
+video.addEventListener('ratechange', () => {
+    audioEl.playbackRate = video.playbackRate;
+});
+video.addEventListener('ended', () => {
+    if (audioEl.src) audioEl.pause();
+    if (looping) { video.currentTime = 0; video.play(); }
+    document.getElementById('playBtn').textContent = '▶ PUSTI';
+});
+
+// ── Volume ────────────────────────────────────────────────────────
+function setVol(type, val) {
+    val = parseFloat(val);
+    if (type === 'vid') {
+        document.getElementById('vidVolVal').textContent = Math.round(val * 100) + '%';
+        if (vidGain && !vidMuted) vidGain.gain.value = val;
+        else if (!vidSrcNode) video.volume = val;
+    } else {
+        document.getElementById('musVolVal').textContent = Math.round(val * 100) + '%';
+        if (musGain) musGain.gain.value = val;
+        else audioEl.volume = val;
+    }
+}
+
+function toggleMuteVid() {
+    vidMuted = !vidMuted;
+    const btn = document.getElementById('muteBtn');
+    btn.textContent = vidMuted ? '🔇' : '🔊';
+    btn.classList.toggle('red', vidMuted);
+    if (vidGain) vidGain.gain.value = vidMuted ? 0 : parseFloat(document.getElementById('vidVol').value);
+    else video.muted = vidMuted;
+    toast(vidMuted ? '🔇 Video audio muted' : '🔊 Video audio aktivan');
+}
+
+// ── Playback ──────────────────────────────────────────────────────
+function togglePlay() {
+    ensureAudioCtx();
+    if (video.paused) { video.play(); }
+    else              { video.pause(); }
+    document.getElementById('playBtn').textContent = video.paused ? '▶ PUSTI' : '⏸ PAUZA';
+}
+
+function setSpeed(s, btn) {
+    video.playbackRate = s;
+    audioEl.playbackRate = s;
+    document.querySelectorAll('.spd').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    toast('▶ ' + s + '×');
+}
+
+function toggleLoop() {
+    looping = !looping;
+    const btn = document.getElementById('loopBtn');
+    btn.classList.toggle('lit-g', looping);
+    toast(looping ? '🔁 Loop ON' : 'Loop OFF');
+}
+
+// ── Points & Cuts ─────────────────────────────────────────────────
+function setPoint(which) {
+    if (which === 's') {
+        startP = video.currentTime;
+        document.getElementById('btnStart').classList.add('lit');
+        toast('📍 Start: ' + fmtT(startP));
+    } else {
+        endP = video.currentTime;
+        document.getElementById('btnEnd').classList.add('lit');
+        toast('📍 End: ' + fmtT(endP));
+    }
+    drawTimeline();
+}
+
+function applyCut() {
+    if (startP < 0 || endP < 0) { toast('⚠️ Postavi OD i DO tačku!'); return; }
+    const s = Math.min(startP, endP);
+    const e = Math.max(startP, endP);
+    if (e - s < 0.05) { toast('⚠️ Interval premali!'); return; }
+    cuts.push({ s, e });
+    startP = endP = -1;
+    document.getElementById('btnStart').classList.remove('lit');
+    document.getElementById('btnEnd').classList.remove('lit');
+    updateStatus(); drawTimeline();
+    toast('✂️ Cut #' + cuts.length + ' (' + (e-s).toFixed(2) + 's)');
+}
+
+function undoCut() {
+    if (!cuts.length) { toast('Nema cutova'); return; }
+    const c = cuts.pop();
+    updateStatus(); drawTimeline();
+    toast('↩ Cut uklonjen (' + fmtT(c.s) + ')');
+}
+
+// ── AI ────────────────────────────────────────────────────────────
+function addAI() {
+    const txt = document.getElementById('aiText').value.trim();
+    if (!txt) { toast('⚠️ Unesi tekst!'); return; }
+    const isEng = /[a-zA-Z]/.test(txt) && !/[čćžšđ]/i.test(txt);
+    aiMsgs.push({ t: txt, time: video.currentTime, lang: isEng ? 'en-US' : 'sr-RS', done: false });
+    document.getElementById('aiText').value = '';
+    updateStatus(); drawTimeline();
+    toast('🎙 AI @ ' + fmtT(video.currentTime) + ': "' + truncate(txt, 20) + '"');
+}
+
+function undoAI() {
+    if (!aiMsgs.length) { toast('Nema AI poruka'); return; }
+    const m = aiMsgs.pop();
+    updateStatus(); drawTimeline();
+    toast('↩ AI uklonjen: "' + truncate(m.t, 20) + '"');
+}
+
+// ── Status bar ────────────────────────────────────────────────────
+function updateStatus() {
+    const vid = document.getElementById('vid-status');
+    const aud = document.getElementById('aud-status');
+    const edt = document.getElementById('edit-status');
+    if (video.src) { vid.textContent = 'VID ✓'; vid.classList.add('ok'); } else { vid.textContent = 'NO VID'; vid.classList.remove('ok'); }
+    if (audioEl.src) { aud.textContent = 'MP3 ✓'; aud.classList.add('ok'); } else { aud.textContent = 'NO MP3'; aud.classList.remove('ok'); }
+    edt.textContent = cuts.length + ' CUTS · ' + aiMsgs.length + ' AI';
+}
+
+// ── Toast ─────────────────────────────────────────────────────────
+let toastTO = null;
+function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTO);
+    toastTO = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────
+function fmtT(s) { return isNaN(s) ? '0.000s' : s.toFixed(3) + 's'; }
+function truncate(s, n) { return s.length > n ? s.slice(0, n) + '…' : s; }
+
+function roundRect(c, x, y, w, h, r) {
+    c.beginPath();
+    c.moveTo(x+r, y); c.lineTo(x+w-r, y);
+    c.quadraticCurveTo(x+w, y, x+w, y+r);
+    c.lineTo(x+w, y+h-r);
+    c.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+    c.lineTo(x+r, y+h);
+    c.quadraticCurveTo(x, y+h, x, y+h-r);
+    c.lineTo(x, y+r);
+    c.quadraticCurveTo(x, y, x+r, y);
+    c.closePath();
+}
+
+// ── Main render loop ──────────────────────────────────────────────
+function render() {
+    // Apply canvas CSS filter for video FX
+    ctx.filter = buildFilter();
+
+    // Draw current video frame
+    if (cvs.width > 0 && video.readyState >= 2) {
+        ctx.drawImage(video, 0, 0, cvs.width, cvs.height);
+    }
+
+    // Reset filter for overlays
+    ctx.filter = 'none';
+
+    // Skip cuts
+    const t = video.currentTime;
+    cuts.forEach(c => {
+        if (t >= c.s && t < c.e && !video.paused) {
+            video.currentTime = c.e;
+            if (audioEl.src) audioEl.currentTime = c.e;
+        }
+    });
+
+    // AI voices + subtitles
+    aiMsgs.forEach(m => {
+        if (t >= m.time && !m.done && !video.paused) {
+            const u  = new SpeechSynthesisUtterance(m.t);
+            u.lang   = m.lang;
+            u.rate   = Math.min(video.playbackRate, 2);
+
+            // Estimate duration: ~80ms per char at rate 1
+            const estMs   = (m.t.length * 80) / u.rate;
+            subSpeakStart = performance.now();
+            subSpeakEnd   = subSpeakStart + estMs;
+
+            u.onend  = () => { subSpeakEnd = performance.now(); subText = null; };
+            u.onerror = () => { subText = null; };
+
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(u);
+
+            if (subsEnabled) subText = m.t;
+            m.done = true;
+        }
+        if (t < m.time - 0.5) m.done = false;
+    });
+
+    // Draw subtitle
+    drawSubtitle();
+
+    // Vignette + Glitch overlays
+    drawVignette();
+    drawGlitch();
+
+    // SFX timeline playback
+    sfxTimeline.forEach(s => {
+        if (!s._done && video.currentTime >= s.time && video.currentTime < s.time + 0.12 && !video.paused) {
+            const delay = parseFloat(document.getElementById('sfxDelay').value) || 0;
+            setTimeout(() => playSFX(s.name), delay * 1000);
+            s._done = true;
+        }
+        if (video.currentTime < s.time - 0.5) s._done = false;
+    });
+
+    // Stop music at video end
+    if (!isNaN(video.duration) && video.currentTime >= video.duration - 0.08 && video.duration > 0) {
+        if (audioEl.src && !audioEl.paused) audioEl.pause();
+    }
+
+    // Time display
+    document.getElementById('cur-time').textContent = fmtT(video.currentTime);
+
+    if (!video.paused) drawTimeline();
+
+    requestAnimationFrame(render);
+}
+
+// ── Timeline draw ─────────────────────────────────────────────────
+function drawTimeline() {
+    const dpr = window.devicePixelRatio || 1;
+    const W = tCvs.clientWidth * dpr;
+    const H = tCvs.clientHeight * dpr;
+    if (tCvs.width !== W) tCvs.width = W;
+    if (tCvs.height !== H) tCvs.height = H;
+
+    const dur = video.duration || 1;
+    const R = W / dur;
+
+    // BG
+    tCtx.fillStyle = '#0e0e0e';
+    tCtx.fillRect(0, 0, W, H);
+
+    // Subtle progress bar fill
+    if (video.duration) {
+        tCtx.fillStyle = '#1a1a1a';
+        tCtx.fillRect(0, H*0.35, W, H*0.3);
+        tCtx.fillStyle = '#252525';
+        tCtx.fillRect(0, H*0.35, (video.currentTime/dur)*W, H*0.3);
+    }
+
+    // Grid lines
+    const step = dur > 120 ? 30 : dur > 60 ? 15 : dur > 30 ? 5 : dur > 10 ? 2 : 1;
+    for (let t2 = 0; t2 <= dur; t2 += step) {
+        const x = t2 * R;
+        tCtx.strokeStyle = '#1f1f1f';
+        tCtx.lineWidth = 1;
+        tCtx.beginPath(); tCtx.moveTo(x, 0); tCtx.lineTo(x, H); tCtx.stroke();
+    }
+
+    // Cuts (red zones)
+    cuts.forEach(c => {
+        tCtx.fillStyle = 'rgba(230,57,70,0.22)';
+        tCtx.fillRect(c.s*R, 0, (c.e-c.s)*R, H);
+        tCtx.strokeStyle = 'rgba(230,57,70,0.7)';
+        tCtx.lineWidth = 1;
+        tCtx.strokeRect(c.s*R + 0.5, 0.5, (c.e-c.s)*R - 1, H - 1);
+        // X label
+        tCtx.fillStyle = 'rgba(230,57,70,0.8)';
+        tCtx.font = `${8*dpr}px sans-serif`;
+        tCtx.fillText('✂', c.s*R + 3, H*0.55);
+    });
+
+    // SFX markers (yellow diamonds)
+    sfxTimeline.forEach(s => {
+        const x = s.time * R;
+        tCtx.fillStyle = '#f59e0b';
+        tCtx.beginPath();
+        tCtx.moveTo(x, H*0.2); tCtx.lineTo(x+5*dpr, H/2);
+        tCtx.lineTo(x, H*0.8); tCtx.lineTo(x-5*dpr, H/2);
+        tCtx.closePath(); tCtx.fill();
+    });
+
+    // AI markers
+    aiMsgs.forEach(m => {
+        const x = m.time * R;
+        tCtx.fillStyle = '#8b5cf6';
+        tCtx.beginPath(); tCtx.arc(x, H/2, 5*dpr, 0, Math.PI*2); tCtx.fill();
+        tCtx.fillStyle = 'rgba(139,92,246,0.7)';
+        tCtx.font = `bold ${7*dpr}px Rajdhani, sans-serif`;
+        tCtx.fillText('AI', x + 7, H*0.58);
+    });
+
+    // Pending start/end markers
+    if (startP >= 0) {
+        tCtx.strokeStyle = '#f59e0b';
+        tCtx.lineWidth = 2;
+        tCtx.setLineDash([5*dpr, 3*dpr]);
+        tCtx.beginPath(); tCtx.moveTo(startP*R, 0); tCtx.lineTo(startP*R, H); tCtx.stroke();
+        tCtx.setLineDash([]);
+        tCtx.fillStyle = '#f59e0b';
+        tCtx.font = `bold ${7*dpr}px sans-serif`;
+        tCtx.fillText('S', startP*R + 3, H*0.58);
+    }
+    if (endP >= 0) {
+        tCtx.strokeStyle = '#e63946';
+        tCtx.lineWidth = 2;
+        tCtx.setLineDash([5*dpr, 3*dpr]);
+        tCtx.beginPath(); tCtx.moveTo(endP*R, 0); tCtx.lineTo(endP*R, H); tCtx.stroke();
+        tCtx.setLineDash([]);
+        tCtx.fillStyle = '#e63946';
+        tCtx.font = `bold ${7*dpr}px sans-serif`;
+        tCtx.fillText('E', endP*R + 3, H*0.58);
+    }
+
+    // Playhead
+    if (!isNaN(video.duration) && video.duration > 0) {
+        const px = video.currentTime * R;
+        // Glow effect
+        tCtx.strokeStyle = 'rgba(255,255,255,0.1)';
+        tCtx.lineWidth = 5;
+        tCtx.beginPath(); tCtx.moveTo(px, 0); tCtx.lineTo(px, H); tCtx.stroke();
+        tCtx.strokeStyle = '#fff';
+        tCtx.lineWidth = 1.5;
+        tCtx.beginPath(); tCtx.moveTo(px, 0); tCtx.lineTo(px, H); tCtx.stroke();
+        // Head triangle
+        tCtx.fillStyle = '#fff';
+        tCtx.beginPath();
+        tCtx.moveTo(px - 5*dpr, 0);
+        tCtx.lineTo(px + 5*dpr, 0);
+        tCtx.lineTo(px, 9*dpr);
+        tCtx.closePath(); tCtx.fill();
+    }
+
+    document.getElementById('dur-time').textContent = fmtT(video.duration);
+    document.getElementById('markers-info').textContent = cuts.length + ' cuts · ' + aiMsgs.length + ' ai';
+}
+
+// ── Timeline interaction (click + drag + touch) ───────────────────
+function seekToRatio(ratio) {
+    if (!video.duration) return;
+    const t = Math.max(0, Math.min(video.duration, ratio * video.duration));
+    video.currentTime = t;
+    if (audioEl.src) audioEl.currentTime = t;
+    drawTimeline();
+}
+
+function tlRatio(e, rect) { return Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)); }
+
+let tlDrag = false;
+tCvs.addEventListener('mousedown',  e => { tlDrag = true; seekToRatio(tlRatio(e, tCvs.getBoundingClientRect())); });
+tCvs.addEventListener('mousemove',  e => { if (tlDrag) seekToRatio(tlRatio(e, tCvs.getBoundingClientRect())); });
+tCvs.addEventListener('mouseup',    () => tlDrag = false);
+tCvs.addEventListener('mouseleave', () => tlDrag = false);
+
+tCvs.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const r = tCvs.getBoundingClientRect();
+    seekToRatio(Math.max(0, Math.min(1, (e.touches[0].clientX - r.left) / r.width)));
+}, { passive: false });
+tCvs.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const r = tCvs.getBoundingClientRect();
+    seekToRatio(Math.max(0, Math.min(1, (e.touches[0].clientX - r.left) / r.width)));
+}, { passive: false });
+
+// ── Keyboard shortcuts ────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    switch (e.key) {
+        case ' ':          e.preventDefault(); togglePlay(); break;
+        case 'ArrowLeft':  video.currentTime = Math.max(0, video.currentTime - 2); break;
+        case 'ArrowRight': video.currentTime = Math.min(video.duration||0, video.currentTime + 2); break;
+        case 'ArrowUp':    video.currentTime = Math.min(video.duration||0, video.currentTime + 10); break;
+        case 'ArrowDown':  video.currentTime = Math.max(0, video.currentTime - 10); break;
+        case 'm': case 'M': toggleMuteVid(); break;
+        case 's': case 'S': setPoint('s'); break;
+        case 'e': case 'E': setPoint('e'); break;
+        case 'c': case 'C': applyCut(); break;
+        case 'z': case 'Z': if (e.ctrlKey||e.metaKey) undoCut(); break;
+    }
+});
+
+// ── Export with mixed audio ───────────────────────────────────────
+async function startExport() {
+    if (!video.src) { toast('⚠️ Nema video fajla!'); return; }
+    if (exporting)  { toast('⏳ Eksport već teče...'); return; }
+
+    ensureAudioCtx();
+    exporting = true;
+    document.getElementById('export-overlay').classList.add('show');
+
+    const videoStream = cvs.captureStream(30);
+    let combinedStream = videoStream;
+
+    if (masterDest) {
+        try {
+            combinedStream = new MediaStream([
+                ...videoStream.getTracks(),
+                ...masterDest.stream.getTracks()
+            ]);
+        } catch(e) { console.warn('stream merge:', e); }
+    }
+
+    // Pick best mime
+    const mimes = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm'
+    ];
+    const mime = mimes.find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
+
+    const recorder = new MediaRecorder(combinedStream, { mimeType: mime });
+    const chunks   = [];
+
+    recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = 'VL_Studio_' + Date.now() + '.webm';
+        a.click();
+        exporting = false;
+        document.getElementById('export-overlay').classList.remove('show');
+        toast('✅ Video snimljen! (' + (blob.size/1024/1024).toFixed(1) + ' MB)');
+    };
+
+    video.currentTime = 0;
+    if (audioEl.src) audioEl.currentTime = 0;
+
+    try {
+        await video.play();
+    } catch(e) { toast('⚠️ Nije moguće startovati export'); exporting = false; document.getElementById('export-overlay').classList.remove('show'); return; }
+
+    recorder.start(100); // collect every 100ms
+
+    video.onended = () => {
+        if (recorder.state !== 'inactive') recorder.stop();
+        if (audioEl.src) audioEl.pause();
+        document.getElementById('playBtn').textContent = '▶ PUSTI';
+    };
+}
+
+// ── Tab switching ─────────────────────────────────────────────────
+function switchTab(id) {
+    document.querySelectorAll('.tab').forEach((t,i) => {
+        const ids = ['main','vfx','sfx'];
+        t.classList.toggle('active', ids[i] === id);
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + id).classList.add('active');
+}
+
+// ── Video FX ──────────────────────────────────────────────────────
+let fxState = {
+    bright:100, contrast:100, sat:100,
+    hue:0, blur:0, gray:0, sepia:0
+};
+let vignetteOn = false;
+let glitchOn   = false;
+let glitchTO   = null;
+
+const PRESETS = {
+    none:     { bright:100, contrast:100, sat:100, hue:0,   blur:0, gray:0,  sepia:0  },
+    gray:     { bright:100, contrast:110, sat:0,   hue:0,   blur:0, gray:100,sepia:0  },
+    sepia:    { bright:110, contrast:90,  sat:80,  hue:0,   blur:0, gray:0,  sepia:100},
+    invert:   null, // handled via CSS filter on canvas
+    night:    { bright:60,  contrast:120, sat:70,  hue:220, blur:0, gray:0,  sepia:0  },
+    warm:     { bright:110, contrast:105, sat:130, hue:20,  blur:0, gray:0,  sepia:20 },
+    cool:     { bright:105, contrast:110, sat:90,  hue:200, blur:0, gray:0,  sepia:0  },
+    vhs:      { bright:95,  contrast:130, sat:140, hue:10,  blur:0.5,gray:0, sepia:10 },
+    vivid:    { bright:115, contrast:120, sat:220, hue:0,   blur:0, gray:0,  sepia:0  },
+    noir:     { bright:80,  contrast:150, sat:0,   hue:0,   blur:0, gray:100,sepia:0  },
+};
+let invertActive = false;
+
+function applyPreset(name) {
+    document.querySelectorAll('.fx-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('fx-' + name)?.classList.add('active');
+
+    if (name === 'invert') { invertActive = !invertActive; document.getElementById('fx-invert').classList.toggle('active', invertActive); return; }
+    invertActive = false;
+
+    const p = PRESETS[name];
+    if (!p) return;
+    fxState = {...p};
+    document.getElementById('fxBright').value   = p.bright;   document.getElementById('fxBrightV').textContent   = p.bright   + '%';
+    document.getElementById('fxContrast').value = p.contrast; document.getElementById('fxContrastV').textContent = p.contrast + '%';
+    document.getElementById('fxSat').value      = p.sat;      document.getElementById('fxSatV').textContent      = p.sat      + '%';
+    document.getElementById('fxHue').value      = p.hue;      document.getElementById('fxHueV').textContent      = p.hue      + '°';
+    document.getElementById('fxBlur').value     = p.blur;     document.getElementById('fxBlurV').textContent     = p.blur     + 'px';
+    document.getElementById('fxGray').value     = p.gray;     document.getElementById('fxGrayV').textContent     = p.gray     + '%';
+    document.getElementById('fxSepia').value    = p.sepia;    document.getElementById('fxSepiaV').textContent    = p.sepia    + '%';
+}
+
+function updateFilter() {
+    fxState.bright   = parseInt(document.getElementById('fxBright').value);
+    fxState.contrast = parseInt(document.getElementById('fxContrast').value);
+    fxState.sat      = parseInt(document.getElementById('fxSat').value);
+    fxState.hue      = parseInt(document.getElementById('fxHue').value);
+    fxState.blur     = parseFloat(document.getElementById('fxBlur').value);
+    fxState.gray     = parseInt(document.getElementById('fxGray').value);
+    fxState.sepia    = parseInt(document.getElementById('fxSepia').value);
+    document.getElementById('fxBrightV').textContent   = fxState.bright   + '%';
+    document.getElementById('fxContrastV').textContent = fxState.contrast + '%';
+    document.getElementById('fxSatV').textContent      = fxState.sat      + '%';
+    document.getElementById('fxHueV').textContent      = fxState.hue      + '°';
+    document.getElementById('fxBlurV').textContent     = fxState.blur     + 'px';
+    document.getElementById('fxGrayV').textContent     = fxState.gray     + '%';
+    document.getElementById('fxSepiaV').textContent    = fxState.sepia    + '%';
+    document.querySelectorAll('.fx-btn').forEach(b => b.classList.remove('active'));
+}
+
+function resetFilters() {
+    applyPreset('none');
+    invertActive = false;
+    vignetteOn   = false;
+    glitchOn     = false;
+    document.getElementById('fx-vignette').classList.remove('active');
+    document.getElementById('fx-glitch').classList.remove('active');
+    toast('↺ Svi efekti resetovani');
+}
+
+function toggleVignette() {
+    vignetteOn = !vignetteOn;
+    document.getElementById('fx-vignette').classList.toggle('active', vignetteOn);
+    toast(vignetteOn ? '🔵 Vignette ON' : '🔵 Vignette OFF');
+}
+
+function toggleGlitch() {
+    glitchOn = !glitchOn;
+    document.getElementById('fx-glitch').classList.toggle('active', glitchOn);
+    toast(glitchOn ? '⚡ Glitch ON' : '⚡ Glitch OFF');
+}
+
+function buildFilter() {
+    let f = `brightness(${fxState.bright}%) contrast(${fxState.contrast}%) saturate(${fxState.sat}%) hue-rotate(${fxState.hue}deg) grayscale(${fxState.gray}%) sepia(${fxState.sepia}%)`;
+    if (fxState.blur > 0) f += ` blur(${fxState.blur}px)`;
+    if (invertActive) f += ` invert(100%)`;
+    return f;
+}
+
+function drawVignette() {
+    if (!vignetteOn) return;
+    const grd = ctx.createRadialGradient(cvs.width/2, cvs.height/2, cvs.height*0.25, cvs.width/2, cvs.height/2, cvs.width*0.8);
+    grd.addColorStop(0, 'rgba(0,0,0,0)');
+    grd.addColorStop(1, 'rgba(0,0,0,0.75)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, cvs.width, cvs.height);
+}
+
+function drawGlitch() {
+    if (!glitchOn || video.paused) return;
+    if (Math.random() > 0.94) {
+        const slices = Math.floor(Math.random() * 5) + 1;
+        for (let i = 0; i < slices; i++) {
+            const sy = Math.random() * cvs.height;
+            const sh = Math.random() * 20 + 4;
+            const dx = (Math.random() - 0.5) * 40;
+            ctx.drawImage(cvs, 0, sy, cvs.width, sh, dx, sy, cvs.width, sh);
+        }
+        // Color channel split
+        const imgd = ctx.getImageData(0, 0, cvs.width, cvs.height);
+        const d = imgd.data;
+        const shift = Math.floor(Math.random() * 12) + 4;
+        for (let i = 0; i < d.length; i += 4) {
+            if (Math.random() > 0.97) { d[i] = d[Math.min(d.length-4,i+shift*4)]; } // R shift
+        }
+        ctx.putImageData(imgd, 0, 0);
+    }
+}
+
+// Patch render to apply canvas filter + vignette + glitch
+const _origRender = render;
+
+// ── Sound FX ──────────────────────────────────────────────────────
+let sfxTimeline = []; // {name, time}
+
+function getSFXVol() { return parseFloat(document.getElementById('sfxVol').value || 0.7); }
+
+function playSFX(name) {
+    ensureAudioCtx();
+    const vol = getSFXVol();
+    const ac  = audioCtx;
+    const out = ac.destination;
+
+    // Master sfx gain (connects to both speakers AND export)
+    const g = ac.createGain();
+    g.gain.value = vol;
+    g.connect(out);
+    if (masterDest) g.connect(masterDest);
+
+    const now = ac.currentTime;
+
+    const sfxDefs = {
+        boom: () => {
+            const buf = ac.createBuffer(1, ac.sampleRate * 1.2, ac.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * Math.exp(-i/(ac.sampleRate*0.3));
+            const s = ac.createBufferSource(); s.buffer = buf;
+            const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 120;
+            s.connect(lp); lp.connect(g); s.start(now);
+        },
+        whoosh: () => {
+            const buf = ac.createBuffer(1, ac.sampleRate * 0.6, ac.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * (i/d.length) * Math.exp(-i/(d.length*0.4));
+            const s = ac.createBufferSource(); s.buffer = buf;
+            const hp = ac.createBiquadFilter(); hp.type='bandpass'; hp.frequency.value=800; hp.Q.value=0.5;
+            s.connect(hp); hp.connect(g); s.start(now);
+        },
+        explosion: () => {
+            const buf = ac.createBuffer(1, ac.sampleRate * 1.5, ac.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * Math.exp(-i/(ac.sampleRate*0.5));
+            const s = ac.createBufferSource(); s.buffer = buf;
+            const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.setValueAtTime(400, now); lp.frequency.exponentialRampToValueAtTime(80, now+1.5);
+            s.connect(lp); lp.connect(g); s.start(now);
+        },
+        thunder: () => {
+            const buf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < d.length; i++) {
+                const env = i < ac.sampleRate*0.1 ? i/(ac.sampleRate*0.1) : Math.exp(-(i-ac.sampleRate*0.1)/(ac.sampleRate*0.8));
+                d[i] = (Math.random()*2-1) * env;
+            }
+            const s = ac.createBufferSource(); s.buffer = buf;
+            const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=200;
+            s.connect(lp); lp.connect(g); s.start(now);
+        },
+        wind: () => {
+            const buf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * 0.4 * Math.sin(Math.PI*i/d.length);
+            const s = ac.createBufferSource(); s.buffer = buf;
+            const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=600; bp.Q.value=0.3;
+            s.connect(bp); bp.connect(g); s.start(now);
+        },
+        rain: () => {
+            const buf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * 0.3;
+            const s = ac.createBufferSource(); s.buffer = buf;
+            const hp = ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=4000;
+            const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=12000;
+            s.connect(hp); hp.connect(lp); lp.connect(g); s.start(now);
+        },
+        fire: () => {
+            const buf = ac.createBuffer(1, ac.sampleRate * 1.5, ac.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * 0.35 * (0.7 + 0.3*Math.sin(i/200));
+            const s = ac.createBufferSource(); s.buffer = buf;
+            const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=300; bp.Q.value=0.4;
+            s.connect(bp); bp.connect(g); s.start(now);
+        },
+        heartbeat: () => {
+            for (let beat = 0; beat < 2; beat++) {
+                const t = now + beat * 0.9;
+                [0, 0.12].forEach(offset => {
+                    const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = 80;
+                    const eg = ac.createGain(); eg.gain.setValueAtTime(0, t+offset); eg.gain.linearRampToValueAtTime(vol*0.8, t+offset+0.04); eg.gain.exponentialRampToValueAtTime(0.001, t+offset+0.15);
+                    o.connect(eg); eg.connect(g); o.start(t+offset); o.stop(t+offset+0.2);
+                });
+            }
+        },
+        gun: () => {
+            const buf = ac.createBuffer(1, ac.sampleRate * 0.4, ac.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * Math.exp(-i/(ac.sampleRate*0.05)) * (i < 200 ? i/200 : 1);
+            const s = ac.createBufferSource(); s.buffer = buf;
+            const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=3000;
+            s.connect(lp); lp.connect(g); s.start(now);
+        },
+        sword: () => {
+            const o = ac.createOscillator(); o.type = 'sawtooth';
+            o.frequency.setValueAtTime(1200, now); o.frequency.exponentialRampToValueAtTime(200, now+0.4);
+            const eg = ac.createGain(); eg.gain.setValueAtTime(vol*0.6, now); eg.gain.exponentialRampToValueAtTime(0.001, now+0.4);
+            o.connect(eg); eg.connect(g); o.start(now); o.stop(now+0.4);
+        },
+        punch: () => {
+            const buf = ac.createBuffer(1, ac.sampleRate * 0.25, ac.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * Math.exp(-i/(ac.sampleRate*0.04));
+            const s = ac.createBufferSource(); s.buffer = buf;
+            const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=500;
+            s.connect(lp); lp.connect(g); s.start(now);
+            // Thud
+            const o = ac.createOscillator(); o.frequency.setValueAtTime(120, now); o.frequency.exponentialRampToValueAtTime(40, now+0.2);
+            const eg2 = ac.createGain(); eg2.gain.setValueAtTime(vol*0.5, now); eg2.gain.exponentialRampToValueAtTime(0.001, now+0.2);
+            o.connect(eg2); eg2.connect(g); o.start(now); o.stop(now+0.25);
+        },
+        laser: () => {
+            const o = ac.createOscillator(); o.type = 'square';
+            o.frequency.setValueAtTime(2000, now); o.frequency.exponentialRampToValueAtTime(200, now+0.3);
+            const eg = ac.createGain(); eg.gain.setValueAtTime(vol*0.4, now); eg.gain.exponentialRampToValueAtTime(0.001, now+0.3);
+            const hp = ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=500;
+            o.connect(hp); hp.connect(eg); eg.connect(g); o.start(now); o.stop(now+0.35);
+        },
+        beep: () => {
+            const o = ac.createOscillator(); o.type='sine'; o.frequency.value=880;
+            const eg = ac.createGain(); eg.gain.setValueAtTime(vol*0.5, now); eg.gain.setValueAtTime(0, now+0.2);
+            o.connect(eg); eg.connect(g); o.start(now); o.stop(now+0.22);
+        },
+        alarm: () => {
+            for (let i = 0; i < 3; i++) {
+                const t = now + i*0.25;
+                const o = ac.createOscillator(); o.type='square';
+                o.frequency.setValueAtTime(880, t); o.frequency.setValueAtTime(660, t+0.12);
+                const eg = ac.createGain(); eg.gain.setValueAtTime(vol*0.3, t); eg.gain.setValueAtTime(0, t+0.24);
+                o.connect(eg); eg.connect(g); o.start(t); o.stop(t+0.26);
+            }
+        },
+        powerup: () => {
+            const o = ac.createOscillator(); o.type='sawtooth';
+            o.frequency.setValueAtTime(200, now); o.frequency.exponentialRampToValueAtTime(1600, now+0.6);
+            const eg = ac.createGain(); eg.gain.setValueAtTime(vol*0.3, now); eg.gain.setValueAtTime(vol*0.5, now+0.5); eg.gain.exponentialRampToValueAtTime(0.001, now+0.65);
+            o.connect(eg); eg.connect(g); o.start(now); o.stop(now+0.7);
+        },
+        powerdown: () => {
+            const o = ac.createOscillator(); o.type='sawtooth';
+            o.frequency.setValueAtTime(1200, now); o.frequency.exponentialRampToValueAtTime(80, now+0.8);
+            const eg = ac.createGain(); eg.gain.setValueAtTime(vol*0.4, now); eg.gain.exponentialRampToValueAtTime(0.001, now+0.85);
+            o.connect(eg); eg.connect(g); o.start(now); o.stop(now+0.9);
+        },
+        ding: () => {
+            [1, 2, 3].forEach((h, i) => {
+                const o = ac.createOscillator(); o.type='sine'; o.frequency.value=880*h;
+                const eg = ac.createGain(); eg.gain.setValueAtTime(vol*0.4/h, now); eg.gain.exponentialRampToValueAtTime(0.001, now+1.2);
+                o.connect(eg); eg.connect(g); o.start(now); o.stop(now+1.3);
+            });
+        },
+        success: () => {
+            [[523,0],[659,0.15],[784,0.3],[1047,0.45]].forEach(([f,t]) => {
+                const o = ac.createOscillator(); o.type='sine'; o.frequency.value=f;
+                const eg = ac.createGain(); eg.gain.setValueAtTime(vol*0.4, now+t); eg.gain.exponentialRampToValueAtTime(0.001, now+t+0.4);
+                o.connect(eg); eg.connect(g); o.start(now+t); o.stop(now+t+0.45);
+            });
+        },
+        error: () => {
+            [[220,0],[196,0.15],[185,0.3]].forEach(([f,t]) => {
+                const o = ac.createOscillator(); o.type='sawtooth'; o.frequency.value=f;
+                const eg = ac.createGain(); eg.gain.setValueAtTime(vol*0.35, now+t); eg.gain.exponentialRampToValueAtTime(0.001, now+t+0.3);
+                o.connect(eg); eg.connect(g); o.start(now+t); o.stop(now+t+0.35);
+            });
+        },
+        click: () => {
+            const buf = ac.createBuffer(1, 1024, ac.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < 1024; i++) d[i] = (Math.random()*2-1) * (1 - i/1024);
+            const s = ac.createBufferSource(); s.buffer = buf;
+            const hp = ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=3000;
+            s.connect(hp); hp.connect(g); s.start(now);
+        },
+        coin: () => {
+            [[1568,0],[2093,0.07],[1568,0.14],[2093,0.22]].forEach(([f,t]) => {
+                const o = ac.createOscillator(); o.type='triangle'; o.frequency.value=f;
+                const eg = ac.createGain(); eg.gain.setValueAtTime(vol*0.4, now+t); eg.gain.exponentialRampToValueAtTime(0.001, now+t+0.18);
+                o.connect(eg); eg.connect(g); o.start(now+t); o.stop(now+t+0.2);
+            });
+        },
+        notification: () => {
+            [[880,0],[1100,0.1],[880,0.2]].forEach(([f,t]) => {
+                const o = ac.createOscillator(); o.type='sine'; o.frequency.value=f;
+                const eg = ac.createGain(); eg.gain.setValueAtTime(vol*0.3, now+t); eg.gain.exponentialRampToValueAtTime(0.001, now+t+0.15);
+                o.connect(eg); eg.connect(g); o.start(now+t); o.stop(now+t+0.18);
+            });
+        },
+        womp: () => {
+            const o = ac.createOscillator(); o.type='sawtooth';
+            o.frequency.setValueAtTime(400, now); o.frequency.exponentialRampToValueAtTime(40, now+0.7);
+            const eg = ac.createGain(); eg.gain.setValueAtTime(vol*0.5, now); eg.gain.exponentialRampToValueAtTime(0.001, now+0.75);
+            const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=600;
+            o.connect(lp); lp.connect(eg); eg.connect(g); o.start(now); o.stop(now+0.8);
+        },
+        applause: () => {
+            const buf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < d.length; i++) {
+                const t2 = i/ac.sampleRate;
+                const env = Math.min(t2/0.3, 1) * (t2 > 1.5 ? Math.exp(-(t2-1.5)/0.3) : 1);
+                d[i] = (Math.random()*2-1) * 0.4 * env * (0.7 + 0.3*Math.sin(t2*8));
+            }
+            const s = ac.createBufferSource(); s.buffer = buf;
+            const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=2000; bp.Q.value=0.5;
+            s.connect(bp); bp.connect(g); s.start(now);
+        }
+    };
+
+    const fn = sfxDefs[name];
+    if (fn) fn();
+    toast('🔊 ' + name.toUpperCase());
+}
+
+function addSFXtoTimeline() {
+    const name = document.getElementById('sfxSelect').value;
+    const t    = video.currentTime;
+    sfxTimeline.push({ name, time: t });
+    renderSFXList();
+    drawTimeline();
+    toast('📌 SFX "' + name + '" @ ' + fmtT(t));
+}
+
+function renderSFXList() {
+    const el = document.getElementById('sfx-timeline-list');
+    el.innerHTML = sfxTimeline.map((s,i) =>
+        `<span style="margin-right:8px;cursor:pointer;" onclick="removeSFX(${i})">✕ ${s.name} @ ${fmtT(s.time)}</span>`
+    ).join('');
+}
+
+function removeSFX(i) {
+    sfxTimeline.splice(i, 1);
+    renderSFXList();
+    drawTimeline();
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+render();
+drawTimeline();
+</script>
+</body>
+</html>
